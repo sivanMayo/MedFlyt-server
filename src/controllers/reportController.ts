@@ -13,15 +13,14 @@ interface Report {
 export const getReport = async (req: Request, res: Response) => {
 
     const sql = `
-        SELECT
-            caregiver.id      AS caregiver_id,
-            caregiver.name    AS caregiver_name,
-            patient.id        AS patient_id,
-            patient.name      AS patient_name,
-            visit.date        AS visit_date
+        SELECT caregiver.name AS name, p.patients
         FROM caregiver
-        JOIN visit ON visit.caregiver = caregiver.id
-        JOIN patient ON patient.id = visit.patient
+        JOIN(
+            SELECT caregiver as id, array_agg(p.name) as patients
+            FROM visit
+            JOIN patient p ON p.id = visit.patient 
+            GROUP BY visit.caregiver
+        ) p USING (id)
     `;
     
     let result : QueryResult;
@@ -29,15 +28,9 @@ export const getReport = async (req: Request, res: Response) => {
         result = await dbUtil.sqlToDB(sql, []);
         const report: Report = {
             year: parseInt(req.params.year),
-            caregivers: []
+            caregivers: result.rows
         };
 
-        for ( let row of result.rows) {
-            report.caregivers.push({
-                name: row.caregiver_name,
-                patients: [row.patient_name]
-            })
-        }
         res.status(200).json(report);
     } catch (error) {
         throw new Error(error.message);
