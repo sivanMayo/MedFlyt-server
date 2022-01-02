@@ -19,6 +19,7 @@ export const getReport = async (req: Request, res: Response) => {
             SELECT caregiver as id, array_agg(p.name) as patients
             FROM visit
             JOIN patient p ON p.id = visit.patient 
+            WHERE date_part('year', visit.date) = ${req.params.year}
             GROUP BY visit.caregiver
         ) p USING (id)
     `;
